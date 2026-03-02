@@ -1,14 +1,22 @@
 const User= require('../models/user.model');
-const ProviderProfile = require('../models/provider.models');
-const { generateToken } = require('../utils/token.utils');
+const generateToken  = require('../utils/generateToken');
 
 const registerUser = async (req, res) => {
      const  { name, email, password , role} = req.body;
       try {
-        if([name, email, password].some(field => field.trim() === "")) {
+        if([name, email, password].some(field => !field || field.trim() === "")) {
             return res.status(400).json({success: false, message: "All fields are required and cannot be empty" });
         }
-        const existingUser = await User.findOne({ email });
+        if (password.length < 6) {
+        return res.status(400).json({
+          success: false,
+          message: "Password must be at least 6 characters"
+           });
+         }
+          if (!["customer", "provider"].includes(role)) {
+           return res.status(400).json({ message: "Invalid role" });
+                }
+        const existingUser = await User.findOne({ email: email.toLowerCase() });
         if (existingUser) {
             return res.status(400).json({success: false, message: "Email already in use" });
         }
@@ -16,7 +24,7 @@ const registerUser = async (req, res) => {
         const newUser= await User.create({ name, email, password, role });
 
         
-         generateToken(res, newUser._id, "User registered successfully");
+         generateToken(res, newUser, "User registered successfully");
 
 
       } catch (error) {
@@ -41,14 +49,9 @@ const loginUser = async (req, res) => {
     return res.status(401).json({success: false, message: "Invalid email or password" });
     }
           
-    if (user.role === "provider") {
-    const providerProfile = await ProviderProfile.findOne({ userId: user._id });
-    if (!providerProfile || providerProfile.isApproved === false) {
-        return res.status(403).json({ success: false, message: "Your account is pending admin approval" });
-            }
-            }
 
-    generateToken(res, user._id, "User logged in successfully");
+
+generateToken(res, user, `Welcome back, ${user.name}! You have logged in successfully`);
     
      } catch (error) {
         res.status(500).json({success: false, message: "Internal server error", error: error.message });
@@ -69,7 +72,7 @@ const logoutUser = (req, res) => {
 const getCurrentUser = async (req, res) => {
 
       try {
-        const user = await User.findById(req.user._id)
+        const user = await User.findById(req.user._id ).select("-__v -createdAt -updatedAt");
         if (!user) {
             return res.status(404).json({ success: false, message: "User not found" });
         }
