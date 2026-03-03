@@ -8,7 +8,9 @@ const router=express.Router();
 const upload=require("../utils/multer");
 const {authMiddleware,allowRoles}=require("../middleware/auth.middleware");
 
-router.post("/", authMiddleware, allowRoles("customer"), createBooking);
+
+
+router.post("/", authMiddleware, allowRoles("customer"), upload.single("customerImage"), createBooking);
 
 router.get("/customer", authMiddleware, allowRoles("customer"), getCustomerBookings);
 router.get("/provider", authMiddleware, allowRoles("provider"), getProviderBookings);

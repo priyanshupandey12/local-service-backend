@@ -1,14 +1,14 @@
 const express=require("express");
-const { getPendingProviders, approveProvider,
+const { getProviders, approveProvider,
     getAllCategories, createCategory,
     updateCategory, deleteCategory,
-        getAllReviews, toggleReviewVisibility
+        getAllReviews, toggleReviewVisibility, getStats, getAllBookings
 } = require("../controllers/admin.controller");
 const router=express.Router();
 const {authMiddleware,allowRoles}=require("../middleware/auth.middleware");
 
-
-router.get("/providers/pending", authMiddleware, allowRoles("admin"), getPendingProviders);
+router.get("/bookings", authMiddleware, allowRoles("admin"), getAllBookings);
+router.get("/providers", authMiddleware, allowRoles("admin"), getProviders);
 router.patch("/providers/:id/approve", authMiddleware, allowRoles("admin"), approveProvider);
 router.get("/categories", authMiddleware, allowRoles("admin"), getAllCategories);
 router.post("/categories", authMiddleware, allowRoles("admin"), createCategory);
@@ -16,5 +16,6 @@ router.patch("/categories/:id", authMiddleware, allowRoles("admin"), updateCateg
 router.delete("/categories/:id", authMiddleware, allowRoles("admin"), deleteCategory);
 router.get("/reviews", authMiddleware, allowRoles("admin"), getAllReviews);
 router.patch("/reviews/:id/visibility", authMiddleware, allowRoles("admin"), toggleReviewVisibility);
+router.get("/stats", authMiddleware, allowRoles("admin"), getStats);
 
 module.exports=router;

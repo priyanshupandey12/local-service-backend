@@ -1,11 +1,13 @@
 const Review = require("../models/review.model");
+const User = require("../models/user.model");
 const ProviderProfile = require("../models/provider.model");
 const ServiceCategory = require("../models/serviceCategory.model");
+const Booking = require("../models/booking.model");
 
 
-const getPendingProviders = async (req, res) => {
+const getProviders = async (req, res) => {
   try {
-    const providers = await ProviderProfile.find({ isApproved: false })
+    const providers = await ProviderProfile.find()
       .populate("userId", "name email")
       .populate("category", "name")
       .sort({ createdAt: -1 });
@@ -17,6 +19,20 @@ const getPendingProviders = async (req, res) => {
   }
 }
 
+const getAllBookings = async (req, res) => {
+  try {
+    const bookings = await Booking.find()
+      .populate("customerId", "name")
+      .populate("providerId", "name")
+      .populate("categoryId", "name")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({ success: true, bookings });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Internal server error", error: error.message });
+  }
+};
+
 const approveProvider = async (req, res) => {
   const { isApproved } = req.body;
 
@@ -25,13 +41,13 @@ const approveProvider = async (req, res) => {
     if (!profile) {
       return res.status(404).json({ success: false, message: "Provider not found" });
     }
-
-    profile.isApproved = isApproved;
-    await profile.save();
+     profile.isApproved = isApproved;
+     profile.status = isApproved ? "approved" : "rejected";
+     await profile.save();
 
     res.status(200).json({ 
       success: true, 
-      message: `Provider ${isApproved ? "approved" : "rejected"} successfully`,
+      message: `Provider ${isApproved ? "approved" : "rejected"} `,
       profile 
     });
 
@@ -125,7 +141,7 @@ const getAllReviews = async (req, res) => {
       .populate("customerId", "name")
       .populate("providerId", "name")
       .populate("bookingId")
-      .sort({ createdAt: -1 }).select("-__v");
+      .sort({ createdAt: -1 }).select("-__v -updatedAt -createdAt ");
 
     res.status(200).json({ success: true, reviews });
 
@@ -155,13 +171,39 @@ const toggleReviewVisibility = async (req, res) => {
   }
 }
 
+
+const getStats = async (req, res) => {
+  try {
+    const totalCustomers = await User.countDocuments({ role: "customer" });
+    const totalProviders = await User.countDocuments({ role: "provider" });
+    const pendingApprovals = await ProviderProfile.countDocuments({ isApproved: false });
+    const totalReviews = await Review.countDocuments();
+    const totalBookings = await Booking.countDocuments();
+
+    res.status(200).json({
+      success: true,
+      stats: {
+        totalCustomers,
+        totalProviders,
+        pendingApprovals,
+        totalReviews,
+        totalBookings,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Internal server error", error: error.message });
+  }
+};
+
 module.exports = {
-    getPendingProviders,
+    getProviders,
     approveProvider,
     getAllCategories,
     createCategory,
     updateCategory,
     deleteCategory,
     getAllReviews,
-    toggleReviewVisibility
+    toggleReviewVisibility,
+    getStats,
+    getAllBookings
 }

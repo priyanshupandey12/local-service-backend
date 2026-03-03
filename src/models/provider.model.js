@@ -17,6 +17,11 @@ const providerProfileSchema = new mongoose.Schema({
     ref: "ServiceCategory",
     required: [true, "Category is required"] 
   },
+  status: {
+  type: String,
+  enum: ["pending", "approved", "rejected"],
+  default: "pending"
+},
   city: { 
     type: String, 
     required: [true, "City is required"],
