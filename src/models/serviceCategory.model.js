@@ -12,6 +12,10 @@ const serviceCategorySchema = new mongoose.Schema({
     required: true,
     trim: true 
   },
+  image: {
+  type: String,
+  default: null
+},
   basePrice: { 
     type: Number, 
     required: true,

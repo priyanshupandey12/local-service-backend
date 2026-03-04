@@ -3,7 +3,8 @@ const User = require("../models/user.model");
 const ProviderProfile = require("../models/provider.model");
 const ServiceCategory = require("../models/serviceCategory.model");
 const Booking = require("../models/booking.model");
-
+const { uploadMedia ,deleteMediaFromCloudinary} = require("../utils/cloudinary");
+const fs = require("fs");
 
 const getProviders = async (req, res) => {
   try {
@@ -58,7 +59,7 @@ const approveProvider = async (req, res) => {
 
 const getAllCategories = async (req, res) => {
   try {
-    const categories = await ServiceCategory.find().sort({ createdAt: -1 }).select("name basePrice isActive");
+    const categories = await ServiceCategory.find().sort({ createdAt: -1 }).select("name basePrice isActive image description");
 
     res.status(200).json({ success: true, categories });
 
@@ -74,16 +75,26 @@ const createCategory = async (req, res) => {
     if (!name || !description || basePrice === undefined) {
       return res.status(400).json({ success: false, message: "All fields are required" });
     }
-     if(!Number.isFinite(basePrice) || basePrice <= 0 || typeof basePrice !== "number"){
-      return res.status(400).json({ success: false, message: "Base price must be a positive number and Greater than zero" });
-     }
+       const price = Number(basePrice);
+        if (!Number.isFinite(price) || price <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Base price must be a positive number and greater than zero"
+      });
+    }
 
     const existingCategory = await ServiceCategory.findOne({ name: { $regex: `^${name}$`, $options: "i" } });
     if (existingCategory) {
       return res.status(400).json({ success: false, message: "Category already exists" });
     }
+       let imageUrl = null;
+    if (req.file) {
+      const result = await uploadMedia(req.file.path);
+      imageUrl = result.secure_url;
+      fs.unlinkSync(req.file.path);
+    }
 
-    const category = await ServiceCategory.create({ name, description, basePrice });
+    const category = await ServiceCategory.create({ name, description, basePrice: price, image: imageUrl });
 
     res.status(201).json({ success: true, message: "Category created successfully", category });
 
@@ -98,17 +109,32 @@ const updateCategory = async (req, res) => {
 
   try {
 
-       if(!Number.isFinite(basePrice) || basePrice <= 0 || typeof basePrice !== "number"){
-      return res.status(400).json({ success: false, message: "Base price must be a positive number and Greater than zero" });
-     }
+          const price = Number(basePrice);
+        if (!Number.isFinite(price) || price <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Base price must be a positive number and greater than zero"
+      });
+    }
     const category = await ServiceCategory.findById(req.params.id);
     if (!category) {
       return res.status(404).json({ success: false, message: "Category not found" });
     }
+     let imageUrl = category.image; 
+    if (req.file) {
+    
+      if (category.image) {
+        const publicId = category.image.split("/").pop().split(".")[0];
+        await deleteMediaFromCloudinary(publicId);
+      }
+      const result = await uploadMedia(req.file.path);
+      imageUrl = result.secure_url;
+      fs.unlinkSync(req.file.path);
+    }
 
     const updatedCategory = await ServiceCategory.findByIdAndUpdate(
       req.params.id,
-      { name, description, basePrice, isActive },
+      { name, description, basePrice: price, isActive , image: imageUrl},
       { new: true, runValidators: true }
     );
 

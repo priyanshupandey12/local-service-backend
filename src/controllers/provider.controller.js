@@ -73,6 +73,21 @@ const updateProviderProfile = async (req, res) => {
   }
 }
 
+const getProviderProfile = async (req, res) => {
+  try {
+    const profile = await ProviderProfile.findOne({ userId: req.user._id })
+      .populate("category", "name basePrice");
+    
+    if (!profile) {
+      return res.status(404).json({ success: false, message: "Profile not found" });
+    }
+
+    res.status(200).json({ success: true, profile });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Internal server error", error: error.message });
+  }
+};
+
 
 const toggleAvailability = async (req, res) => {
   try {
@@ -104,7 +119,7 @@ const toggleAvailability = async (req, res) => {
 
 
 const getAllProviders = async (req, res) => {
-  const { city, area, category, page = 1, limit = 10 } = req.query;
+  const { city, area, category, minPrice, maxPrice, rating, page = 1, limit = 10 } = req.query;
 
   try {
     const filter = {
@@ -114,6 +129,7 @@ const getAllProviders = async (req, res) => {
 
     if (city) filter.city = { $regex: city, $options: "i" };
     if (area) filter.area = { $regex: area, $options: "i" };
+       if (rating) filter.avgRating = { $gte: Number(rating) };
       if (category) {
       const categoryDoc = await ServiceCategory.findOne({ 
         name: { $regex: category, $options: "i" } 
@@ -125,15 +141,25 @@ const getAllProviders = async (req, res) => {
     const pageSize = parseInt(limit);
     const skip = (pageNumber - 1) * pageSize;
 
-    const totalProviders = await ProviderProfile.countDocuments(filter);
-
-    const providers = await ProviderProfile.find(filter)
-      .select("-__v -createdAt -updatedAt -isApproved -isAvailable -avgRating -totalReviews")
+     let providers = await ProviderProfile.find(filter)
+      .select("-__v -createdAt -updatedAt -isApproved -isAvailable")
       .populate("userId", "name email")
       .populate("category", "name basePrice")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(pageSize);
+      .sort({ createdAt: -1 });
+
+   
+    if (minPrice || maxPrice) {
+      providers = providers.filter((p) => {
+        const price = p.category?.basePrice || 0;
+        if (minPrice && maxPrice) return price >= Number(minPrice) && price <= Number(maxPrice);
+        if (minPrice) return price >= Number(minPrice);
+        if (maxPrice) return price <= Number(maxPrice);
+        return true;
+      });
+    }
+
+    const totalProviders = providers.length;
+    const paginatedProviders = providers.slice(skip, skip + pageSize);
 
     res.status(200).json({
       success: true,
@@ -143,7 +169,7 @@ const getAllProviders = async (req, res) => {
         totalPages: Math.ceil(totalProviders / pageSize),
         pageSize,
       },
-      providers,
+      providers: paginatedProviders,
     });
 
   } catch (error) {
@@ -185,5 +211,6 @@ module.exports = {
     updateProviderProfile,
     toggleAvailability,
     getAllProviders,
-    getProviderById
+    getProviderById,
+    getProviderProfile
 }

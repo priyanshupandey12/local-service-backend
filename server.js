@@ -3,7 +3,7 @@ const express = require('express');
 const connectDB = require('./src/config/database');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
-
+const { globalLimiter } = require('./src/middleware/ratelimiter.middleware');
 const authRoutes = require('./src/router/user.router');
 const providerRoutes = require('./src/router/provider.router');
 const bookingRoutes = require('./src/router/booking.router');
@@ -14,7 +14,7 @@ const categoryRoutes = require('./src/router/category.router');
 const app = express();
 
 connectDB();
-
+app.set('trust proxy', 1);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -22,6 +22,7 @@ app.use(cors({
   origin: process.env.CLIENT_URL,
   credentials: true
 }));
+app.use(globalLimiter);
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/provider', providerRoutes);
