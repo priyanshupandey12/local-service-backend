@@ -2,7 +2,7 @@ const express=require("express");
 const { createBooking,getCustomerBookings,
     getProviderBookings,getBookingById,
     updateBookingStatus,cancelBooking,
-    rescheduleBooking,updateBookingImages
+    rescheduleBooking,updateBookingImages,updateJobNotes
 } = require("../controllers/booking.controller");
 const router=express.Router();
 const upload=require("../utils/multer");
@@ -37,6 +37,7 @@ router.patch(
 
 router.patch("/:id/reschedule", authMiddleware, allowRoles("customer"), rescheduleBooking);
 router.patch("/:id/cancel", authMiddleware, allowRoles("customer"), cancelBooking);
+router.patch("/:id/notes", authMiddleware, allowRoles("provider"), updateJobNotes);
 
 
 module.exports=router;

@@ -119,7 +119,7 @@ const toggleAvailability = async (req, res) => {
 
 
 const getAllProviders = async (req, res) => {
-  const { city, area, category, minPrice, maxPrice, rating, page = 1, limit = 10 } = req.query;
+  const {  location, category, minPrice, maxPrice, rating, page = 1, limit = 10 } = req.query;
 
   try {
     const filter = {
@@ -127,8 +127,12 @@ const getAllProviders = async (req, res) => {
       isAvailable: true,
     };
 
-    if (city) filter.city = { $regex: city, $options: "i" };
-    if (area) filter.area = { $regex: area, $options: "i" };
+        if (location) {
+      filter.$or = [
+        { city: { $regex: location, $options: "i" } },
+        { area: { $regex: location, $options: "i" } },
+      ];
+    }
        if (rating) filter.avgRating = { $gte: Number(rating) };
       if (category) {
       const categoryDoc = await ServiceCategory.findOne({ 

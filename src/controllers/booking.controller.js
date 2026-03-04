@@ -12,6 +12,22 @@ const createBooking = async (req, res) => {
     }
 
 
+    const todayStr = new Date().toLocaleDateString("en-CA");
+    if (scheduledDate < todayStr) {
+      return res.status(400).json({ success: false, message: "Booking date cannot be in the past" });
+    }
+
+    if (scheduledDate === todayStr) {
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      const [hours, minutes] = scheduledTime.split(":").map(Number);
+      const bookingMinutes = hours * 60 + minutes;
+
+      if (bookingMinutes < currentMinutes + 60) {
+        return res.status(400).json({ success: false, message: "Booking time must be at least 1 hour from now" });
+      }
+    }
+
     const providerProfile = await ProviderProfile.findOne({ userId: providerId });
     if (!providerProfile || !providerProfile.isApproved || !providerProfile.isAvailable) {
       return res.status(400).json({ success: false, message: "Provider not available" });
@@ -144,8 +160,7 @@ const updateBookingStatus = async (req, res) => {
 
     const allowedTransitions = {
       "requested": ["confirmed", "cancelled"],
-      "confirmed": ["in-progress"],
-      "in-progress": ["completed"]
+      "confirmed": ["in-progress"]
     };
 
     if (!allowedTransitions[booking.status]?.includes(status)) {
@@ -179,8 +194,8 @@ const updateBookingImages = async (req, res) => {
     }
 
   
-    if (booking.status !== "completed") {
-      return res.status(400).json({ success: false, message: "Can only update images for completed booking" });
+      if (!["in-progress", "completed"].includes(booking.status)) {
+      return res.status(400).json({ success: false, message: "Cannot update images at this stage" });
     }
 
     if (!req.files?.beforeImages || !req.files?.afterImages) {
@@ -203,10 +218,13 @@ const updateBookingImages = async (req, res) => {
       })
     );
 
-    booking.beforeImages = beforeImages;
-    booking.afterImages = afterImages;
-    if (jobNotes) booking.jobNotes = jobNotes;
-    await booking.save();
+  booking.beforeImages = beforeImages;
+  booking.afterImages = afterImages;
+  if (jobNotes) booking.jobNotes = jobNotes;
+   if (booking.status === "in-progress") {
+      booking.status = "completed";
+    }
+  await booking.save();
 
     res.status(200).json({ success: true, message: "Images updated successfully", booking });
 
@@ -214,6 +232,37 @@ const updateBookingImages = async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error", error: error.message });
   }
 }
+
+const updateJobNotes = async (req, res) => {
+  const { jobNotes } = req.body;
+
+  try {
+    if (!jobNotes || !jobNotes.trim()) {
+      return res.status(400).json({ success: false, message: "Job notes cannot be empty" });
+    }
+
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: "Booking not found" });
+    }
+
+    if (booking.providerId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: "Unauthorized" });
+    }
+
+    if (booking.status !== "completed") {
+      return res.status(400).json({ success: false, message: "Can only update notes for completed booking" });
+    }
+
+    booking.jobNotes = jobNotes;
+    await booking.save();
+
+    res.status(200).json({ success: true, message: "Job notes updated successfully", booking });
+
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Internal server error", error: error.message });
+  }
+};
 
 
 const cancelBooking = async (req, res) => {
@@ -251,6 +300,22 @@ const rescheduleBooking = async (req, res) => {
       return res.status(400).json({ success: false, message: "New date and time are required" });
     }
 
+        const todayStr = new Date().toLocaleDateString("en-CA");
+    if (scheduledDate < todayStr) {
+      return res.status(400).json({ success: false, message: "Booking date cannot be in the past" });
+    }
+
+    if (scheduledDate === todayStr) {
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      const [hours, minutes] = scheduledTime.split(":").map(Number);
+      const bookingMinutes = hours * 60 + minutes;
+
+      if (bookingMinutes < currentMinutes + 60) {
+        return res.status(400).json({ success: false, message: "Booking time must be at least 1 hour from now" });
+      }
+    }
+
     const booking = await Booking.findById(req.params.id);
     if (!booking) {
       return res.status(404).json({ success: false, message: "Booking not found" });
@@ -266,8 +331,9 @@ const rescheduleBooking = async (req, res) => {
       return res.status(400).json({ success: false, message: `Booking cannot be rescheduled at ${booking.status} stage` });
     }
 
-    booking.scheduledDate = scheduledDate;
-    booking.scheduledTime = scheduledTime;
+   booking.scheduledDate = scheduledDate;
+   booking.scheduledTime = scheduledTime;
+   booking.status = "requested"; 
     await booking.save();
 
     res.status(200).json({ success: true, message: "Booking rescheduled successfully", booking });
@@ -285,6 +351,7 @@ module.exports = {
     updateBookingStatus,
     cancelBooking,
     rescheduleBooking,
-    updateBookingImages
+    updateBookingImages,
+    updateJobNotes
 
 }
