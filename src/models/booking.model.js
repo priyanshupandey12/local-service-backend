@@ -26,8 +26,8 @@ const bookingSchema = new mongoose.Schema({
     required: true 
   },
   scheduledTime: { 
-    type: String, 
-    required: true 
+    type: String,
+    default:null
   },
   problemDescription: { 
     type: String, 
@@ -48,6 +48,8 @@ const bookingSchema = new mongoose.Schema({
     type: String, 
     default: null 
   },
+  rescheduleCount: { type: Number, default: 0 },
+lastRescheduledAt: { type: Date, default: null },
   beforeImages: { 
     type: [String], 
     default: [] 

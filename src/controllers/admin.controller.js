@@ -197,6 +197,52 @@ const toggleReviewVisibility = async (req, res) => {
   }
 }
 
+const deleteProvider = async (req, res) => {
+  try {
+    const provider = await ProviderProfile.findById(req.params.id);
+    if (!provider) {
+      return res.status(404).json({ success: false, message: "Provider not found" });
+    }
+
+    const userId = provider.userId;
+
+    await Booking.deleteMany({ providerId: userId });
+    await Review.deleteMany({ providerId: userId });
+    await ProviderProfile.findByIdAndDelete(req.params.id);
+    await User.findByIdAndDelete(userId);
+
+    res.status(200).json({ success: true, message: "Provider and related data deleted successfully" });
+
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Internal server error", error: error.message });
+  }
+};
+
+const deleteReview = async (req, res) => {
+  try {
+    const review = await Review.findById(req.params.id);
+    if (!review) {
+      return res.status(404).json({ success: false, message: "Review not found" });
+    }
+
+    const providerId = review.providerId;
+    await Review.findByIdAndDelete(req.params.id);
+
+    const remainingReviews = await Review.find({ providerId });
+    const avgRating = remainingReviews.length > 0
+      ? remainingReviews.reduce((sum, r) => sum + r.rating, 0) / remainingReviews.length
+      : 0;
+
+    await ProviderProfile.findOneAndUpdate(
+      { userId: providerId },
+      { avgRating: Math.round(avgRating * 10) / 10, totalReviews: remainingReviews.length }
+    );
+
+    res.status(200).json({ success: true, message: "Review deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
 
 const getStats = async (req, res) => {
   try {
@@ -231,5 +277,7 @@ module.exports = {
     getAllReviews,
     toggleReviewVisibility,
     getStats,
-    getAllBookings
+    getAllBookings,
+    deleteProvider,
+    deleteReview
 }

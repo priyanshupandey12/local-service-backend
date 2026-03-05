@@ -76,7 +76,8 @@ const updateProviderProfile = async (req, res) => {
 const getProviderProfile = async (req, res) => {
   try {
     const profile = await ProviderProfile.findOne({ userId: req.user._id })
-      .populate("category", "name basePrice");
+      .populate("category", "name basePrice")
+      .populate("userId", "name role");
     
     if (!profile) {
       return res.status(404).json({ success: false, message: "Profile not found" });

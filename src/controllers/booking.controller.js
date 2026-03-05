@@ -7,7 +7,7 @@ const createBooking = async (req, res) => {
   const { providerId, categoryId, address, scheduledDate, scheduledTime, problemDescription } = req.body;
 
   try {
-    if ([providerId, categoryId, address, scheduledDate, scheduledTime, problemDescription].some(field => !field || field.trim() === "")) {
+    if ([providerId, categoryId, address, scheduledDate,problemDescription].some(field => !field || field.trim() === "")) {
       return res.status(400).json({ success: false, message: "All fields are required and cannot be empty" });
     }
 
@@ -16,7 +16,7 @@ const createBooking = async (req, res) => {
     if (scheduledDate < todayStr) {
       return res.status(400).json({ success: false, message: "Booking date cannot be in the past" });
     }
-
+    if(scheduledTime) {
     if (scheduledDate === todayStr) {
       const now = new Date();
       const currentMinutes = now.getHours() * 60 + now.getMinutes();
@@ -26,6 +26,7 @@ const createBooking = async (req, res) => {
       if (bookingMinutes < currentMinutes + 60) {
         return res.status(400).json({ success: false, message: "Booking time must be at least 1 hour from now" });
       }
+    }
     }
 
     const providerProfile = await ProviderProfile.findOne({ userId: providerId });
@@ -39,6 +40,18 @@ const createBooking = async (req, res) => {
       customerImageUrl = result.secure_url;
       fs.unlinkSync(req.file.path);
     }
+
+         if (scheduledTime) {
+  const existingBooking = await Booking.findOne({
+    providerId,
+    scheduledDate,
+    scheduledTime,
+    status: { $in: ["requested", "confirmed", "in-progress"] }
+  });
+  if (existingBooking) {
+    return res.status(400).json({ success: false, message: "Provider already has a booking at this time" });
+  }
+}
 
     const booking = await Booking.create({
       customerId: req.user._id,
@@ -194,9 +207,9 @@ const updateBookingImages = async (req, res) => {
     }
 
   
-      if (!["in-progress", "completed"].includes(booking.status)) {
-      return res.status(400).json({ success: false, message: "Cannot update images at this stage" });
-    }
+ if (booking.status !== "in-progress") {
+  return res.status(400).json({ success: false, message: "Images can only be uploaded before job completion" });
+}
 
     if (!req.files?.beforeImages || !req.files?.afterImages) {
       return res.status(400).json({ success: false, message: "Before and after images are required" });
@@ -282,6 +295,27 @@ const cancelBooking = async (req, res) => {
       return res.status(400).json({ success: false, message: `Booking cannot be cancelled at ${booking.status} stage` });
     }
 
+if (booking.status === "confirmed") {
+  const todayStr = new Date().toLocaleDateString("en-CA");
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const bookingDateStr = new Date(booking.scheduledDate).toLocaleDateString("en-CA");
+
+  if (bookingDateStr === todayStr) {
+    const [hours, minutes] = booking.scheduledTime
+      ? booking.scheduledTime.split(":").map(Number)
+      : [23, 59];
+    const bookingMinutes = hours * 60 + minutes;
+
+    if (bookingMinutes - currentMinutes < 120) {
+      return res.status(400).json({
+        success: false,
+        message: "Confirmed booking cannot be cancelled within 2 hours of scheduled time"
+      });
+    }
+  }
+}
+
     booking.status = "cancelled";
     await booking.save();
 
@@ -296,7 +330,7 @@ const rescheduleBooking = async (req, res) => {
   const { scheduledDate, scheduledTime } = req.body;
 
   try {
-    if (!scheduledDate || !scheduledTime) {
+    if (!scheduledDate ) {
       return res.status(400).json({ success: false, message: "New date and time are required" });
     }
 
@@ -304,7 +338,7 @@ const rescheduleBooking = async (req, res) => {
     if (scheduledDate < todayStr) {
       return res.status(400).json({ success: false, message: "Booking date cannot be in the past" });
     }
-
+      if(scheduledTime){
     if (scheduledDate === todayStr) {
       const now = new Date();
       const currentMinutes = now.getHours() * 60 + now.getMinutes();
@@ -315,6 +349,7 @@ const rescheduleBooking = async (req, res) => {
         return res.status(400).json({ success: false, message: "Booking time must be at least 1 hour from now" });
       }
     }
+  }
 
     const booking = await Booking.findById(req.params.id);
     if (!booking) {
@@ -331,8 +366,28 @@ const rescheduleBooking = async (req, res) => {
       return res.status(400).json({ success: false, message: `Booking cannot be rescheduled at ${booking.status} stage` });
     }
 
+    if (booking.rescheduleCount >= 2) {
+  return res.status(400).json({ 
+    success: false, 
+    message: "Maximum reschedule limit reached" 
+  });
+}
+   if (booking.lastRescheduledAt) {
+    const hoursSinceLastReschedule = 
+    (new Date() - new Date(booking.lastRescheduledAt)) / (1000 * 60 * 60);
+     if (hoursSinceLastReschedule < 24) {
+    return res.status(400).json({ 
+      success: false, 
+      message: "You can reschedule again after 24 hours" 
+    });
+  }
+}
+
+    booking.rescheduleCount += 1;
+    booking.lastRescheduledAt = new Date();
+
    booking.scheduledDate = scheduledDate;
-   booking.scheduledTime = scheduledTime;
+    booking.scheduledTime = scheduledTime || null;
    booking.status = "requested"; 
     await booking.save();
 

@@ -5,7 +5,7 @@ const router=express.Router();
 const {authMiddleware,allowRoles}=require("../middleware/auth.middleware");
 
 
-router.post("/:bookingId", authMiddleware, allowRoles("customer"), createReview);
+router.post("/", authMiddleware, allowRoles("customer"), createReview);
 router.get("/provider/:providerId", authMiddleware, getProviderReviews);
 
 
