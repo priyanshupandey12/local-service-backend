@@ -5,13 +5,16 @@ const { uploadMedia ,deleteMediaFromCloudinary} = require("../utils/cloudinary")
 const fs = require("fs");
 
 const createProviderProfile = async (req, res) => {
-  const { bio, category, city, area } = req.body;
+  const { bio, category, city, area,phone } = req.body;
 
   try {
     
-     if(![bio, category, city, area].every(field => field && field.trim())) {
+     if(![bio, category, city, area,phone].every(field => field && field.trim())) {
       return res.status(400).json({ success: false, message: "All fields are required and cannot be empty" });
     }
+    if (!/^[6-9]\d{9}$/.test(phone)) {
+  return res.status(400).json({ success: false, message: "Invalid phone number" });
+}
     const existingProfile = await ProviderProfile.findOne({ userId: req.user._id });
     if (existingProfile) {
       return res.status(400).json({ success: false, message: "Profile already exists" });
@@ -29,6 +32,7 @@ const createProviderProfile = async (req, res) => {
       category,
       city,
       area,
+      phone,
        profilePhoto: profilePhotoUrl
     });
 
@@ -40,7 +44,7 @@ const createProviderProfile = async (req, res) => {
 }
 
 const updateProviderProfile = async (req, res) => {
-  const { bio, category, city, area } = req.body;
+  const { bio,city, area,phone } = req.body;
 
   try {
     const profile = await ProviderProfile.findOne({ userId: req.user._id });
@@ -63,7 +67,7 @@ const updateProviderProfile = async (req, res) => {
 
     const updatedProfile = await ProviderProfile.findOneAndUpdate(
       { userId: req.user._id },
-      { bio, category, city, area, profilePhoto: profilePhotoUrl },
+      { bio, city, area, profilePhoto: profilePhotoUrl,phone },
       { new: true, runValidators: true }
     );
     res.status(200).json({ success: true, message: "Profile updated successfully", profile: updatedProfile });

@@ -149,7 +149,18 @@ const getBookingById = async (req, res) => {
       return res.status(403).json({ success: false, message: "Unauthorized" });
     }
 
-    res.status(200).json({ success: true, booking });
+      let providerPhone = null;
+      if (["confirmed", "in-progress"].includes(booking.status)) {
+      const providerProfile = await ProviderProfile.findOne({ 
+        userId: booking.providerId._id 
+      }).select("phone");
+      providerPhone = providerProfile?.phone || null;
+    }
+
+    res.status(200).json({ success: true,   booking: {
+    ...booking.toObject(),
+    providerPhone,
+  } });
 
   } catch (error) {
     res.status(500).json({ success: false, message: "Internal server error", error: error.message });

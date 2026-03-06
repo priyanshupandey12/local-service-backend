@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const { getAllCategories } = require("../controllers/admin.controller");
+const { getPublicCategories } = require("../controllers/admin.controller");
 
-router.get("/", getAllCategories);
+router.get("/", getPublicCategories);
 
 module.exports = router;

@@ -27,8 +27,8 @@ const authLimiter = rateLimit({
 
 
 const registrationLimiter = rateLimit({
-    windowMs:         60 * 60 * 1000,
-    max:              5,
+    windowMs:         30 * 60 * 1000 ,
+    max:              65,
     standardHeaders:  true,
     legacyHeaders:    false,
     handler:          limitResponse('Too many registration attempts. Please try again later.'),

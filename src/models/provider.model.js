@@ -17,6 +17,11 @@ const providerProfileSchema = new mongoose.Schema({
     ref: "ServiceCategory",
     required: [true, "Category is required"] 
   },
+  phone: {
+  type: String,
+  default: null,
+  match: [/^[6-9]\d{9}$/, "Invalid phone number"]
+},
   status: {
   type: String,
   enum: ["pending", "approved", "rejected"],

@@ -68,6 +68,17 @@ const getAllCategories = async (req, res) => {
   }
 }
 
+const getPublicCategories = async (req, res) => {
+  try {
+    const categories = await ServiceCategory.find({isActive:true}).sort({ createdAt: -1 }).select("name basePrice isActive image description");
+
+    res.status(200).json({ success: true, categories });
+
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Internal server error", error: error.message });
+  }
+}
+
 const createCategory = async (req, res) => {
   const { name, description, basePrice } = req.body;
 
@@ -279,5 +290,6 @@ module.exports = {
     getStats,
     getAllBookings,
     deleteProvider,
-    deleteReview
+    deleteReview,
+    getPublicCategories
 }
