@@ -194,7 +194,9 @@ localservice/
 │   │   └── utils/
 |   |   |__ config/  
 │   └── server.js
-│
+
+
+Different Folder
 └── frontend/
     └── src/
         ├── pages/
