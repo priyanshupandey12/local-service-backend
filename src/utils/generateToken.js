@@ -19,6 +19,7 @@ const generateToken = (res, user, message) => {
     .json({
       success: true,
       message,
+      token,
       userId: user._id,
       role: user.role
     });
