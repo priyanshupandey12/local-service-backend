@@ -5,7 +5,7 @@ const { uploadMedia ,deleteMediaFromCloudinary} = require("../utils/cloudinary")
 const fs = require("fs");
 
 const createProviderProfile = async (req, res) => {
-  const { bio, category, city, area,phone } = req.body;
+  const { bio, category, city, area,phone, basePrice } = req.body;
 
   try {
     
@@ -18,6 +18,20 @@ const createProviderProfile = async (req, res) => {
     const existingProfile = await ProviderProfile.findOne({ userId: req.user._id });
     if (existingProfile) {
       return res.status(400).json({ success: false, message: "Profile already exists" });
+    }
+
+    const categoryData = await ServiceCategory.findById(category);
+    if (!categoryData) {
+      return res.status(404).json({ success: false, message: "Category not found" });
+    }
+
+   
+    const providerPrice = basePrice ? Number(basePrice) : null;
+    if (providerPrice && providerPrice < categoryData.basePrice) {
+      return res.status(400).json({
+        success: false,
+        message: `Your price must be at least ₹${categoryData.basePrice}`
+      });
     }
     let profilePhotoUrl = null;
     if (req.file) {
@@ -33,7 +47,8 @@ const createProviderProfile = async (req, res) => {
       city,
       area,
       phone,
-       profilePhoto: profilePhotoUrl
+       profilePhoto: profilePhotoUrl,
+        basePrice: providerPrice
     });
 
     res.status(201).json({ success: true, message: "Profile created successfully", profile });
@@ -44,14 +59,39 @@ const createProviderProfile = async (req, res) => {
 }
 
 const updateProviderProfile = async (req, res) => {
-  const { bio,city, area,phone } = req.body;
+  const { bio,city, area,phone,basePrice} = req.body;
 
   try {
     const profile = await ProviderProfile.findOne({ userId: req.user._id });
     if (!profile) {
       return res.status(404).json({ success: false, message: "Profile not found" });
     }
+    
+          let updateData = { bio, city, area, phone };
+           let priceChanged = false;
 
+    if (basePrice !== undefined && basePrice !== "") {
+      const providerPrice = Number(basePrice);
+
+     
+      const categoryData = await ServiceCategory.findById(profile.category);
+
+      if (providerPrice < categoryData.basePrice) {
+        return res.status(400).json({
+          success: false,
+          message: `Your price must be at least ₹${categoryData.basePrice}`
+        });
+      }
+
+      
+      if (providerPrice !== profile.basePrice) {
+        priceChanged = true;
+        updateData.basePrice = providerPrice;
+        updateData.status = "pending";
+        updateData.isApproved = false;
+        updateData.isAvailable=false;
+      }
+    }
 
     let profilePhotoUrl = profile.profilePhoto; 
     if (req.file) {
@@ -64,13 +104,21 @@ const updateProviderProfile = async (req, res) => {
       profilePhotoUrl = result.secure_url;
       fs.unlinkSync(req.file.path);
     }
+      updateData.profilePhoto = profilePhotoUrl;
 
     const updatedProfile = await ProviderProfile.findOneAndUpdate(
       { userId: req.user._id },
-      { bio, city, area, profilePhoto: profilePhotoUrl,phone },
+      updateData,
       { new: true, runValidators: true }
     );
-    res.status(200).json({ success: true, message: "Profile updated successfully", profile: updatedProfile });
+      res.status(200).json({
+      success: true,
+      message: priceChanged
+        ? "Profile updated. Price change requires admin approval."
+        : "Profile updated successfully",
+      profile: updatedProfile,
+      priceChanged
+    });
 
   } catch (error) {
     res.status(500).json({ success: false, message: "Internal server error", error: error.message });
@@ -157,13 +205,12 @@ const getAllProviders = async (req, res) => {
       .sort({ createdAt: -1 });
 
    
-    if (minPrice || maxPrice) {
+   if (minPrice || maxPrice) {
       providers = providers.filter((p) => {
-        const price = p.category?.basePrice || 0;
-        if (minPrice && maxPrice) return price >= Number(minPrice) && price <= Number(maxPrice);
-        if (minPrice) return price >= Number(minPrice);
-        if (maxPrice) return price <= Number(maxPrice);
-        return true;
+        const effectivePrice = p.basePrice || p.category?.basePrice || 0;
+        const min = minPrice ? Number(minPrice) : 0;
+        const max = maxPrice ? Number(maxPrice) : Infinity;
+        return effectivePrice >= min && effectivePrice <= max;
       });
     }
 

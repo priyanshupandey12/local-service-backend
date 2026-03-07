@@ -27,6 +27,10 @@ const providerProfileSchema = new mongoose.Schema({
   enum: ["pending", "approved", "rejected"],
   default: "pending"
 },
+basePrice: {
+  type: Number,
+  default: null 
+},
   city: { 
     type: String, 
     required: [true, "City is required"],

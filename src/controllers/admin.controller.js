@@ -10,7 +10,7 @@ const getProviders = async (req, res) => {
   try {
     const providers = await ProviderProfile.find()
       .populate("userId", "name email")
-      .populate("category", "name")
+      .populate("category", "name basePrice")
       .sort({ createdAt: -1 });
 
     res.status(200).json({ success: true, providers });

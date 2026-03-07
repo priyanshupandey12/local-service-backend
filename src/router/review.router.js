@@ -6,7 +6,7 @@ const {authMiddleware,allowRoles}=require("../middleware/auth.middleware");
 
 
 router.post("/", authMiddleware, allowRoles("customer"), createReview);
-router.get("/provider/:providerId", authMiddleware, getProviderReviews);
+router.get("/provider/:providerId",  getProviderReviews);
 
 
 module.exports=router;

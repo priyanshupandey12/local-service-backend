@@ -32,7 +32,7 @@ const reviewSchema = new mongoose.Schema({
   },
   isVisible: { 
     type: Boolean, 
-    default: true 
+    default: false
   }
 }, { timestamps: true })
 

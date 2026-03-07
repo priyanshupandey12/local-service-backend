@@ -79,7 +79,7 @@ const getCustomerBookings = async (req, res) => {
   const skip = (page - 1) * limit;
 
 const bookings = await Booking.find({ customerId: req.user._id })
-  .select("-problemDescription -customerImage -beforeImages -afterImages -jobNotes -__v -updatedAt -createdAt")
+  .select("-problemDescription  -beforeImages -afterImages -jobNotes -__v -updatedAt -createdAt")
   .populate("providerId", "name")
   .populate("categoryId", "name basePrice")
   .sort({ createdAt: -1 })
