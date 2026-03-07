@@ -60,10 +60,11 @@ generateToken(res, user, `Welcome back, ${user.name}! You have logged in success
 
 
 const logoutUser = (req, res) => {
+     const isProduction = process.env.NODE_ENV === "production";
     res.clearCookie("token", {
         httpOnly: true,
-        secure: false,
-        sameSite: "lax",
+        sameSite: isProduction ? "none" : "lax", 
+        secure: isProduction ? true : false,  
     });
     res.status(200).json({ success: true, message: "User logged out successfully" });
 }
