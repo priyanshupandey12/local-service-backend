@@ -196,6 +196,8 @@ const updateBookingStatus = async (req, res) => {
          booking.status = status;
          if (jobNotes) booking.jobNotes = jobNotes;
         await booking.save();
+    await booking.populate("customerId", "name email");
+    await booking.populate("categoryId", "name");
 
     res.status(200).json({ success: true, message: "Status updated successfully", booking });
 
@@ -249,6 +251,8 @@ const updateBookingImages = async (req, res) => {
       booking.status = "completed";
     }
   await booking.save();
+    await booking.populate("customerId", "name email");
+    await booking.populate("categoryId", "name");
 
     res.status(200).json({ success: true, message: "Images updated successfully", booking });
 
