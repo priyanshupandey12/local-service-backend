@@ -12,8 +12,8 @@ LocalService is an Platform where customers can browse service providers by cate
 
 ## 🚀 Live Demo
 
-> **Frontend:** `https://your-frontend-url.vercel.app`
-> **Backend API:** `https://your-backend-url.render.com`
+> **Frontend:** `https://servify-yjp9.onrender.com/`
+
 
 ---
 
